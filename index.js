@@ -21,31 +21,46 @@ const { url } = require('inspector');
 
 let keyword = "讀書會";
 let arrLink = [];
-let pages = 0;
-
+let pages = 1;
 
 // TODO: 換頁抓取
-async function searchKeyword(){
-    console.log('start to searching...');
-    // for(i=0;i<=10;i++){
-        await nightmare
-        .goto(`https://old.accupass.com/search/r/0/0/0/0/4/`+pages+`/00010101/99991231?q=` + keyword)
-        .wait(2000)
-        .catch(error => {
-          console.error('Search failed:', error)
-        });
-        // changePages()
-    // }
+// async function searchKeyword(){
+//     console.log('start to searching...');
+//     for(i=0;i<=10;i++){
+//         // changePages(pages)
+//         // console.log(pageUrl)
+//         await nightmare
+//         .goto(changePages(pages))
+//         .wait(2000)
+//         .catch(error => {
+//           console.error('Search failed:', error)
+//         });
+//         pages++
+//     }
+       
+// };
 
-};
-
-// async function changePages(){
-//     pages++
+// async function changePages(pages){
+//     let html = `https://old.accupass.com/search/r/0/0/0/0/4/`+pages+`/00010101/99991231?q=` + keyword
 //     console.log(pages)
+//     console.log(html)
+//     throw html
 // }
 
 async function parseHtml(){
     console.log('parseHtml');
+    // console.log(html);
+    for(i=0;i<=10;i++){
+        let htmlUrl = `https://old.accupass.com/search/r/0/0/0/0/4/`+pages+`/00010101/99991231?q=` + keyword
+    await nightmare
+        .goto(htmlUrl)
+        .wait(2000)
+        .catch(error => {
+          console.error('Search failed:', error)
+        });
+        pages++
+
+
     let html = await nightmare.evaluate(()=>{
         return document.documentElement.innerHTML;
     });
@@ -70,7 +85,7 @@ async function parseHtml(){
     })
 
     await writeJson();
-}
+}}
 
 async function getData(){
     console.log('getData');
@@ -80,6 +95,7 @@ async function getData(){
     for(let i = 0; i < data.length; i++){
         const data2 = await parseDetail(data[i].href);
 
+        arrLink[i]["location"]=data2.location;
         arrLink[i]["pics"]=data2.pics;
         arrLink[i]["productSpec"]=data2.productSpec;
     }
@@ -93,27 +109,34 @@ async function parseDetail(url){
     let allData = {};
     let picsArray = [];
 
-    await nightmare.goto(url).wait(1000);
+    await nightmare.goto(url).wait(5000);
 
     let html = await nightmare.evaluate(()=>{
         return document.documentElement.innerHTML;
     });
-    
-    let pic = $(html).find('.style-d559067e-event-banner-bg').css("background-image").slice(4,-1);
-    // console.log("src: ", pic);
+
+    let location = {}
+    let allLocation = $(html).find('.style-e6c7200c-event-detail-link > div');
+    allLocation.each(function(index, element){
+        location = $(this).text().slice(2);
+    })
+    console.log("location:", location)
+    allData["location"] = location
+
+    let pic = $(html).find('.style-d559067e-event-banner-bg').css("background-image").slice(4, -1);
+    console.log("src: ", pic);
 
     picsArray.push(pic);
     allData["pics"] = picsArray;
+    console.log(allData);
 
-    let productSpec = {}
-    let allProductSpec = $(html).find('.style-225f7a48-event-content')
-
+    let productSpec = {};
+    let allProductSpec = $(html).find('.style-225f7a48-event-content');
     allProductSpec.each(function(index, element){
         productSpec["活動內容"] = $(this).text();
     })
 
     allData["productSpec"] = productSpec;
-
 
     console.log(allData)
     return allData;
@@ -163,7 +186,7 @@ async function writeJson(){
     }
 
     await writeFile(
-        "output/" + keyword + ".json",
+        "output/" + 'bookclub' + ".json",
         JSON.stringify(arrLink, null, 2)
     )
 }
@@ -183,8 +206,8 @@ async function asyncArray(functionList){
 
 
 try{
-    // asyncArray([searchKeyword, parseHtml, getData, close])
-    asyncArray([downloadImgs])
+    asyncArray([ parseHtml, getData, close])
+    // asyncArray([downloadImgs])
     .then(async ()=>{
         console.log('Done.');
     });
